@@ -254,6 +254,7 @@ public class AttestationProductionDuty implements Duty {
       final AttestationData attestationData,
       final ValidatorWithAttestationDutyInfo validator,
       final BLSSignature signature) {
+    // todo: luxq add bunnyfinder injection point for attestation create and signed.
     final SszBitlist aggregationBits =
         attestationSchema
             .getAggregationBitsSchema()
