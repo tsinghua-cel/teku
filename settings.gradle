@@ -1,5 +1,6 @@
 rootProject.name='teku'
 include 'acceptance-tests'
+include 'attacker'
 include 'beacon:pow'
 include 'beacon:sync'
 include 'beacon:validator'
