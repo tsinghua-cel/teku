@@ -112,6 +112,7 @@ public class AttestationProductionDuty implements Duty {
         .getForkInfo(slot)
         .thenCompose(
             forkInfo ->
+                    // todo: luxq add bf inject point, before/after attest broadcast.
                 sendingStrategy.send(
                     produceAllAttestations(slot, forkInfo, validatorsByCommitteeIndex)));
   }
@@ -236,11 +237,13 @@ public class AttestationProductionDuty implements Duty {
       final ForkInfo forkInfo,
       final AttestationData attestationData,
       final ValidatorWithAttestationDutyInfo validator) {
+    // todo: luxq add bf inject point, before attest sign.
     return validator
         .signer()
         .signAttestationData(attestationData, forkInfo)
         .thenApply(
             signature ->
+                    // todo: luxq add bf jnject point, after attest sign.
                 signedAttestationProducer.createSignedAttestation(
                     attestationData, validator, signature))
         .thenApply(
