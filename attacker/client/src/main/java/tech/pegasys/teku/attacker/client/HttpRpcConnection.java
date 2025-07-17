@@ -1,77 +1,48 @@
+/*
+ * Copyright Consensys Software Inc., 2025
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
 package tech.pegasys.teku.attacker.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.concurrent.atomic.AtomicLong;
+import com.googlecode.jsonrpc4j.JsonRpcHttpClient;
+import java.net.URL;
+import java.util.concurrent.CompletableFuture;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
 
 public class HttpRpcConnection implements RpcConnection {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-    private final HttpClient httpClient;
-    private final URI endpoint;
-    private final AtomicLong idCounter = new AtomicLong(0);
+  private final JsonRpcHttpClient rpcClient;
 
-    public HttpRpcConnection(URI endpoint) {
-        this.endpoint = endpoint;
-        this.httpClient = HttpClient.newHttpClient();
-    }
+  public HttpRpcConnection(URL endpoint) {
+    this.rpcClient = new JsonRpcHttpClient(new ObjectMapper(), endpoint);
+  }
 
-    @Override
-    public <T> SafeFuture<T> call(String method, Class<T> responseType, Object... params) {
-        SafeFuture<T> future = new SafeFuture<>();
-
-        try {
-            ObjectNode requestNode = MAPPER.createObjectNode();
-            requestNode.put("jsonrpc", "2.0");
-            requestNode.put("id", idCounter.incrementAndGet());
-            requestNode.put("method", method);
-
-            ArrayNode paramsNode = MAPPER.createArrayNode();
-            for (Object param : params) {
-                paramsNode.addPOJO(param);
-            }
-            requestNode.set("params", paramsNode);
-
-            String requestBody = MAPPER.writeValueAsString(requestNode);
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(endpoint)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                    .build();
-
-            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenApply(response -> {
-                        try {
-                            ObjectNode responseNode = (ObjectNode) MAPPER.readTree(response.body());
-                            if (responseNode.has("error")) {
-                                throw new RuntimeException("RPC error: " + responseNode.get("error").toString());
-                            }
-                            return MAPPER.treeToValue(responseNode.get("result"), responseType);
-                        } catch (Exception e) {
-                            throw new RuntimeException("Failed to parse RPC response", e);
-                        }
-                    })
-                    .thenAccept(future::complete)
-                    .exceptionally(e -> {
-                        future.completeExceptionally(e);
-                        return null;
-                    });
-        } catch (Exception e) {
+  @Override
+  public <T> SafeFuture<T> call(String method, Class<T> responseType, Object... params) {
+    SafeFuture<T> future = new SafeFuture<>();
+    CompletableFuture.runAsync(
+        () -> {
+          try {
+            T response = rpcClient.invoke(method, params, responseType);
+            future.complete(response);
+          } catch (Exception e) {
             future.completeExceptionally(e);
-        }
+          }
+        });
+    return future;
+  }
 
-        return future;
-    }
-
-    @Override
-    public void close() {
-        // HttpClient doesn't need explicit closing
-    }
+  @Override
+  public void close() {
+    // No explicit close needed for JsonRpcHttpClient
+  }
 }
