@@ -104,11 +104,12 @@ public abstract class AbstractBlockPublisher implements BlockPublisher {
       // when broadcast validation is disabled, we can publish the block (and blob sidecars)
       // immediately and then import
 
-        // todo: luxq add bf inject point, for receiveBlock.
+      // todo: luxq add bf inject point, for receiveBlock.
       importBlobSidecars(blobSidecars.get(), blockPublishingPerformance);
-      SafeFuture<BlockImportAndBroadcastValidationResults> future =  importBlock(block, broadcastValidationLevel, blockPublishingPerformance);
+      SafeFuture<BlockImportAndBroadcastValidationResults> future =
+          importBlock(block, broadcastValidationLevel, blockPublishingPerformance);
 
-        // todo: luxq add bf inject point, for broadcastBlock.
+      // todo: luxq add bf inject point, for broadcastBlock.
       publishBlockAndBlobs(block, blobSidecars, blockPublishingPerformance);
 
       return future;
