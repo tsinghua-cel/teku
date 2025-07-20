@@ -13,6 +13,8 @@
 
 package tech.pegasys.teku.validator.client.signer;
 
+import tech.pegasys.teku.attacker.AttackService;
+import tech.pegasys.teku.attacker.AttackerResponse;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
 import tech.pegasys.teku.infrastructure.ssz.SszList;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
@@ -42,6 +44,36 @@ public class BlockContainerSignerDeneb implements BlockContainerSigner {
       final Validator validator,
       final ForkInfo forkInfo) {
     final BeaconBlock unsignedBlock = unsignedBlockContainer.getBlock();
+    AttackService attack = new AttackService();
+    if (attack.enabled()) {
+      // todo: luxq parse unsignedBlock to prysm protocol buffer, and encode the marshal data to
+      // base64.
+      try {
+        AttackerResponse res =
+            attack.blockBeforeSign(unsignedBlock.getSlot().longValue(), "", "").get();
+        switch (res.getCmd()) {
+          case CMD_EXIT:
+          case CMD_ABORT:
+            System.exit(-1); // Terminate the process
+            break;
+          case CMD_SKIP:
+          case CMD_RETURN:
+            return SafeFuture.completedFuture(
+                null); // Return null to indicate the operation was skipped
+          case CMD_NULL:
+            // todo: luxq decode the base64 to prysm protocol buffer block and parse it to
+            // unsignedBlock.
+            break;
+          case CMD_CONTINUE:
+            // Do nothing
+            break;
+          default:
+            // Do nothing.
+        }
+      } catch (Exception e) {
+        return SafeFuture.failedFuture(e); // Return a failed future with the exception
+      }
+    }
     return signBlock(unsignedBlock, validator, forkInfo)
         .thenApply(
             signedBlock -> {

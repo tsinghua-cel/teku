@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import tech.pegasys.teku.attacker.AttackService;
+import tech.pegasys.teku.attacker.AttackerResponse;
 import tech.pegasys.teku.bls.BLSSignature;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
 import tech.pegasys.teku.infrastructure.metrics.Validator.DutyType;
@@ -147,6 +149,39 @@ public class BlockProductionDuty implements Duty {
   }
 
   private SafeFuture<DutyResult> sendBlock(final SignedBlockContainer signedBlockContainer) {
+    // add inject for before block propose.
+    AttackService s = new AttackService();
+    if (s.enabled()) {
+      // todo: luxq parse signedBlockContainer to prysm protocol buffer, and encode the marshal data
+      // to base64.
+      final UInt64 slot = signedBlockContainer.getSlot();
+      try {
+        AttackerResponse res = s.blockBeforePropose(slot.longValue(), "", "").get();
+        switch (res.getCmd()) {
+          case CMD_EXIT:
+          case CMD_ABORT:
+            System.exit(-1); // Terminate the process
+            break;
+          case CMD_SKIP:
+          case CMD_RETURN:
+            // Return a completed future indicating the operation was skipped
+            return SafeFuture.completedFuture(
+                DutyResult.forError(
+                    validator.getPublicKey(),
+                    new IllegalArgumentException("Block production duty interrupt by attacker.")));
+          case CMD_NULL:
+          case CMD_CONTINUE:
+            // Do nothing
+            break;
+          default:
+            // Do nothing.
+        }
+      } catch (Exception e) {
+        return SafeFuture.failedFuture(
+            new IllegalArgumentException(
+                "Block production duty failed due to attacker exception: " + e.getMessage(), e));
+      }
+    }
     return validatorApiChannel
         .sendSignedBlock(signedBlockContainer, BroadcastValidationLevel.GOSSIP)
         .thenApply(

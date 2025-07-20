@@ -1,13 +1,7 @@
+jar { enabled = false }
 dependencies {
   implementation project(':infrastructure:async')
-  implementation 'com.fasterxml.jackson.core:jackson-databind'
-  implementation 'org.apache.tuweni:tuweni-bytes'
-
-  testImplementation project(':infrastructure:test-support')
-  testImplementation 'org.assertj:assertj-core'
-  testImplementation 'org.mockito:mockito-core'
-  testImplementation 'org.junit.jupiter:junit-jupiter-api'
-  testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+  implementation 'com.github.briandilley.jsonrpc4j:jsonrpc4j:1.7'
+  implementation 'com.fasterxml.jackson.core:jackson-annotations:2.15.2'
 }
-
 description = 'Teku Attacker Client'

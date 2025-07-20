@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package tech.pegasys.teku.attacker.client;
+package tech.pegasys.teku.attacker;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
@@ -34,7 +34,7 @@ public enum AttackerCommand {
 
   private final int value;
 
-  AttackerCommand(int value) {
+  AttackerCommand(final int value) {
     this.value = value;
   }
 
@@ -44,7 +44,7 @@ public enum AttackerCommand {
   }
 
   @JsonCreator
-  public static AttackerCommand fromValue(int value) {
+  public static AttackerCommand fromValue(final int value) {
     for (AttackerCommand command : AttackerCommand.values()) {
       if (command.value == value) {
         return command;
