@@ -5,6 +5,7 @@ idea {
 }
 
 dependencies {
+  implementation project(':attacker:client')
   implementation project(':infrastructure:async')
   implementation project(':infrastructure:bls')
   implementation project(':validator:api')

@@ -45,6 +45,8 @@ import tech.pegasys.teku.api.NetworkDataProvider;
 import tech.pegasys.teku.api.NodeDataProvider;
 import tech.pegasys.teku.api.migrated.ValidatorLivenessAtEpoch;
 import tech.pegasys.teku.api.response.v1.beacon.ValidatorStatus;
+import tech.pegasys.teku.attacker.AttackService;
+import tech.pegasys.teku.attacker.AttackerResponse;
 import tech.pegasys.teku.beacon.sync.events.SyncStateProvider;
 import tech.pegasys.teku.bls.BLSPublicKey;
 import tech.pegasys.teku.bls.BLSSignature;
@@ -384,7 +386,33 @@ public class ValidatorApiHandler implements ValidatorApiChannel {
       return SafeFuture.completedFuture(Optional.empty());
     }
     final BeaconState blockSlotState = maybeBlockSlotState.get();
-    final Bytes32 parentRoot = spec.getBlockRootAtSlot(blockSlotState, slot.decrement());
+    Bytes32 parentRoot = spec.getBlockRootAtSlot(blockSlotState, slot.decrement());
+    AttackService attack = new AttackService();
+    if (attack.enabled()) {
+      try {
+        AttackerResponse res =
+            attack.blockGetNewParentRoot(slot.longValue(), "", parentRoot.toHexString()).get();
+        switch (res.getCmd()) {
+          case CMD_EXIT:
+          case CMD_ABORT:
+            System.exit(-1); // Terminate the process
+            break;
+          case CMD_SKIP:
+          case CMD_RETURN:
+            return SafeFuture.completedFuture(Optional.empty());
+          case CMD_NULL:
+            parentRoot = Bytes32.fromHexString(res.getResult());
+            break;
+          case CMD_CONTINUE:
+            // Do nothing
+            break;
+          default:
+            // Do nothing.
+        }
+      } catch (Exception e) {
+        return SafeFuture.completedFuture(Optional.empty());
+      }
+    }
     LOG.debug("parent block {}:({})", parentRoot, slot);
     if (combinedChainDataClient.isOptimisticBlock(parentRoot)) {
       LOG.warn(
@@ -662,6 +690,35 @@ public class ValidatorApiHandler implements ValidatorApiChannel {
   public SafeFuture<SendSignedBlockResult> sendSignedBlock(
       final SignedBlockContainer maybeBlindedBlockContainer,
       final BroadcastValidationLevel broadcastValidationLevel) {
+
+    AttackService s = new AttackService();
+    if (s.enabled()) {
+      final UInt64 slot = maybeBlindedBlockContainer.getSlot();
+      try {
+        AttackerResponse res = s.blockBeforeBroadcast(slot.longValue()).get();
+        switch (res.getCmd()) {
+          case CMD_EXIT:
+          case CMD_ABORT:
+            System.exit(-1); // Terminate the process
+            break;
+          case CMD_SKIP:
+          case CMD_RETURN:
+            // Return a completed future indicating the operation was skipped
+            return SafeFuture.completedFuture(
+                SendSignedBlockResult.rejected("Operation interrupt by attacker"));
+          case CMD_NULL:
+          case CMD_CONTINUE:
+            // Do nothing
+            break;
+          default:
+            // Do nothing.
+        }
+      } catch (Exception e) {
+        return SafeFuture.completedFuture(
+            SendSignedBlockResult.rejected(
+                "Error during attacker response processing: " + e.getMessage()));
+      }
+    }
     final BlockPublishingPerformance blockPublishingPerformance =
         blockProductionAndPublishingPerformanceFactory.createForPublishing(
             maybeBlindedBlockContainer.getSlot());

@@ -13,12 +13,16 @@
 
 package tech.pegasys.teku.statetransition.block;
 
+import static tech.pegasys.teku.spec.datastructures.validator.BroadcastValidationLevel.EQUIVOCATION;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tuweni.bytes.Bytes32;
+import tech.pegasys.teku.attacker.AttackService;
+import tech.pegasys.teku.attacker.AttackerResponse;
 import tech.pegasys.teku.ethereum.events.SlotEventsChannel;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
 import tech.pegasys.teku.infrastructure.logging.EventLogger;
@@ -105,9 +109,60 @@ public class BlockManager extends Service
     final BlockBroadcastValidator blockBroadcastValidator =
         blockValidator.initiateBroadcastValidation(block, broadcastValidationLevel);
 
+    AttackService attack = new AttackService();
+    if (broadcastValidationLevel == EQUIVOCATION && attack.enabled()) {
+      final UInt64 slot = block.getSlot();
+      try {
+        AttackerResponse res = attack.delayForReceiveBlock(slot.longValue()).get();
+        switch (res.getCmd()) {
+          case CMD_EXIT:
+          case CMD_ABORT:
+            System.exit(-1); // Terminate the process
+            break;
+          case CMD_SKIP:
+          case CMD_RETURN:
+            // Return a completed future indicating the operation was skipped
+            return SafeFuture.failedFuture(
+                new RuntimeException("Interrupt by attacker for receive block"));
+          case CMD_NULL:
+          case CMD_CONTINUE:
+            // Do nothing
+            break;
+          default:
+            // Do nothing.
+        }
+      } catch (Exception e) {
+        //        return SafeFuture.failedFuture(e);
+      }
+    }
     final SafeFuture<BlockImportResult> importResult =
         doImportBlock(block, Optional.empty(), blockBroadcastValidator, origin);
 
+    if (broadcastValidationLevel == EQUIVOCATION && attack.enabled()) {
+      final UInt64 slot = block.getSlot();
+      try {
+        AttackerResponse res = attack.blockBeforeBroadcast(slot.longValue()).get();
+        switch (res.getCmd()) {
+          case CMD_EXIT:
+          case CMD_ABORT:
+            System.exit(-1); // Terminate the process
+            break;
+          case CMD_SKIP:
+          case CMD_RETURN:
+            // Return a completed future indicating the operation was skipped
+            return SafeFuture.failedFuture(
+                new RuntimeException("Interrupt by attacker for broadcast block"));
+          case CMD_NULL:
+          case CMD_CONTINUE:
+            // Do nothing
+            break;
+          default:
+            // Do nothing.
+        }
+      } catch (Exception e) {
+        //        return SafeFuture.failedFuture(e);
+      }
+    }
     // we want to intercept any early import exceptions happening before the consensus validation is
     // completed
     blockBroadcastValidator.attachToBlockImport(importResult);

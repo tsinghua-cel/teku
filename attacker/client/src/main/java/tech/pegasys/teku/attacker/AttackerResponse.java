@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package tech.pegasys.teku.attacker.client;
+package tech.pegasys.teku.attacker;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -30,7 +30,7 @@ public class AttackerResponse {
     // Default constructor for Jackson deserialization
   }
 
-  public AttackerResponse(AttackerCommand cmd, String result) {
+  public AttackerResponse(final AttackerCommand cmd, final String result) {
     this.cmd = cmd;
     this.result = result;
   }
