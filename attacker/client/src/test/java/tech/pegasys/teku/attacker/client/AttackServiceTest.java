@@ -11,15 +11,19 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package tech.pegasys.teku.attacker;
+package tech.pegasys.teku.attacker.client;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+
+import org.junit.jupiter.api.Test;
 
 public class AttackServiceTest {
 
-  //  @Test
-  //  public void attackIsNotEnabled() {
-  //    AttackService s = new AttackService();
-  //    assertThat(s.enabled()).isEqualTo(false);
-  //  }
+  @Test
+  public void attackIsNotEnabled() {
+    AttackService s = new AttackService();
+    assertThat(s.enabled()).isEqualTo(false);
+  }
 
   //  @Test
   //  public void attackIsEnabled() {

@@ -13,8 +13,8 @@
 
 package tech.pegasys.teku.validator.client.signer;
 
-import tech.pegasys.teku.attacker.AttackService;
-import tech.pegasys.teku.attacker.AttackerResponse;
+import tech.pegasys.teku.attacker.client.AttackService;
+import tech.pegasys.teku.attacker.client.AttackerResponse;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
 import tech.pegasys.teku.infrastructure.ssz.SszList;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;

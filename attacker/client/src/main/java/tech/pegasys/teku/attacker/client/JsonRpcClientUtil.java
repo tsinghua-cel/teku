@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package tech.pegasys.teku.attacker;
+package tech.pegasys.teku.attacker.client;
 
 import com.googlecode.jsonrpc4j.JsonRpcHttpClient;
 import java.net.MalformedURLException;
