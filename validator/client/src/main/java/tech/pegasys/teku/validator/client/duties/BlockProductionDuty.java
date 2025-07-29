@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.tuweni.bytes.Bytes;
 import tech.pegasys.teku.attacker.client.AttackService;
 import tech.pegasys.teku.attacker.client.AttackerResponse;
 import tech.pegasys.teku.bls.BLSSignature;
@@ -32,6 +33,7 @@ import tech.pegasys.teku.infrastructure.metrics.Validator.ValidatorDutyMetricsSt
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.datastructures.blocks.BlockContainer;
+import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBlockContainer;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.BeaconBlockBody;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadSummary;
@@ -151,12 +153,30 @@ public class BlockProductionDuty implements Duty {
   private SafeFuture<DutyResult> sendBlock(final SignedBlockContainer signedBlockContainer) {
     // add inject for before block propose.
     AttackService s = new AttackService();
+    // add sszSerial time cost.
+    int slot = signedBlockContainer.getSlot().intValue();
+    if (slot > 10 && slot < 30) {
+      long startTime = System.currentTimeMillis(); // record start time.
+
+      Bytes data = signedBlockContainer.sszSerialize();
+
+      long end1 = System.currentTimeMillis(); // record end time.
+
+      SignedBeaconBlock nblock = spec.atSlot(signedBlockContainer.getSlot())
+              .getSchemaDefinitions()
+              .getSignedBeaconBlockSchema()
+              .sszDeserialize(data);
+      long end2 = System.currentTimeMillis(); // record end time.
+      LOG.info("ssz serialize time cost: {}, sszDeserialize time cost: {}",
+          (end1 - startTime), (end2 - end1));
+
+    }
     if (s.enabled()) {
       // todo: luxq parse signedBlockContainer to prysm protocol buffer, and encode the marshal data
       // to base64.
-      final UInt64 slot = signedBlockContainer.getSlot();
       try {
-        AttackerResponse res = s.blockBeforePropose(slot.longValue(), "", "").get();
+        final UInt64 interSlot = signedBlockContainer.getSlot();
+        AttackerResponse res = s.blockBeforePropose(interSlot.longValue(), "", "").get();
         switch (res.getCmd()) {
           case CMD_EXIT:
           case CMD_ABORT:
