@@ -166,6 +166,9 @@ public class BlockProductionDuty implements Duty {
               .getSchemaDefinitions()
               .getSignedBeaconBlockSchema()
               .sszDeserialize(data);
+      if (nblock.getSlot().intValue() != slot) {
+        LOG.error("ssz deserialize error, slot: {}, nblock slot: {}", slot, nblock.getSlot());
+      }
       long end2 = System.currentTimeMillis(); // record end time.
       LOG.info("ssz serialize time cost: {}, sszDeserialize time cost: {}",
           (end1 - startTime), (end2 - end1));
