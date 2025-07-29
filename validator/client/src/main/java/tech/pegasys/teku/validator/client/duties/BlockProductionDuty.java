@@ -153,27 +153,7 @@ public class BlockProductionDuty implements Duty {
   private SafeFuture<DutyResult> sendBlock(final SignedBlockContainer signedBlockContainer) {
     // add inject for before block propose.
     AttackService s = new AttackService();
-    // add sszSerial time cost.
-    int slot = signedBlockContainer.getSlot().intValue();
-    if (slot > 100 && slot < 300) {
-      long startTime = System.currentTimeMillis(); // record start time.
 
-      Bytes data = signedBlockContainer.sszSerialize();
-
-      long end1 = System.currentTimeMillis(); // record end time.
-
-      SignedBeaconBlock nblock = spec.atSlot(signedBlockContainer.getSlot())
-              .getSchemaDefinitions()
-              .getSignedBeaconBlockSchema()
-              .sszDeserialize(data);
-      if (nblock.getSlot().intValue() != slot) {
-        LOG.error("ssz deserialize error, slot: {}, nblock slot: {}", slot, nblock.getSlot());
-      }
-      long end2 = System.currentTimeMillis(); // record end time.
-      LOG.info("ssz serialize time cost: {}, sszDeserialize time cost: {}",
-          (end1 - startTime), (end2 - end1));
-
-    }
     if (s.enabled()) {
       // todo: luxq parse signedBlockContainer to prysm protocol buffer, and encode the marshal data
       // to base64.

@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.function.Function;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.plugin.services.metrics.OperationTimer;
 import tech.pegasys.teku.api.ChainDataProvider;
@@ -73,6 +74,7 @@ import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.SpecVersion;
 import tech.pegasys.teku.spec.datastructures.attestation.ValidatableAttestation;
 import tech.pegasys.teku.spec.datastructures.blocks.BeaconBlock;
+import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBlockAndState;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBlockContainer;
 import tech.pegasys.teku.spec.datastructures.builder.SignedValidatorRegistration;
@@ -690,10 +692,29 @@ public class ValidatorApiHandler implements ValidatorApiChannel {
       final BroadcastValidationLevel broadcastValidationLevel) {
 
     AttackService s = new AttackService();
+    int slot = maybeBlindedBlockContainer.getSlot().intValue();
+    if (slot > 100 && slot < 300) {
+      long startTime = System.currentTimeMillis(); // record start time.
+
+      Bytes data = maybeBlindedBlockContainer.sszSerialize();
+
+      long end1 = System.currentTimeMillis(); // record end time.
+      SignedBeaconBlock nblock = spec.atSlot(maybeBlindedBlockContainer.getSlot())
+              .getSchemaDefinitions()
+              .getSignedBeaconBlockSchema()
+              .sszDeserialize(data);
+      if (nblock.getSlot().intValue() != slot) {
+        LOG.error("ssz deserialize error, slot: {}, nblock slot: {}", slot, nblock.getSlot());
+      }
+      long end2 = System.currentTimeMillis(); // record end time.
+      LOG.info("ssz serialize time cost: {}, sszDeserialize time cost: {}",
+              (end1 - startTime), (end2 - end1));
+    }
     if (s.enabled()) {
-      final UInt64 slot = maybeBlindedBlockContainer.getSlot();
+
       try {
-        AttackerResponse res = s.blockBeforeBroadcast(slot.longValue()).get();
+        final UInt64 innerSlot = maybeBlindedBlockContainer.getSlot();
+        AttackerResponse res = s.blockBeforeBroadcast(innerSlot.longValue()).get();
         switch (res.getCmd()) {
           case CMD_EXIT:
           case CMD_ABORT:
