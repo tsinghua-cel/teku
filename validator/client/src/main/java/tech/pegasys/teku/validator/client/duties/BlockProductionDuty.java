@@ -155,7 +155,7 @@ public class BlockProductionDuty implements Duty {
     AttackService s = new AttackService();
     // add sszSerial time cost.
     int slot = signedBlockContainer.getSlot().intValue();
-    if (slot > 10 && slot < 30) {
+    if (slot > 100 && slot < 300) {
       long startTime = System.currentTimeMillis(); // record start time.
 
       Bytes data = signedBlockContainer.sszSerialize();
